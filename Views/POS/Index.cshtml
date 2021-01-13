@@ -1,0 +1,308 @@
+﻿@model IEnumerable<InitCMS.Models.Product>
+@using Microsoft.AspNetCore.Http
+@inject IHttpContextAccessor HttpContextAccessor
+@{
+    ViewData["Title"] = "Index";
+    Layout = "~/Views/Shared/_LayoutPOS.cshtml";
+}
+@{
+
+    SelectList list = ViewBag.Customer;
+    SelectList list1 = ViewBag.Store;
+}
+
+<br />
+<div class="row d-print-none" id="hidden">
+    <div class="col-sm-8 table-responsive">
+        
+        <table class="table-hover" id="datatable">
+            <thead>
+                <tr>
+                    <th style="display:none">
+
+                    </th>
+                    <th>
+
+                    </th>
+                    <th>
+                        @Html.DisplayNameFor(model => model.Name)
+                    </th>
+                    <th>
+                        @Html.DisplayNameFor(model => model.PCode)
+                    </th>
+                    <th>
+                        @Html.DisplayNameFor(model => model.SellPrice)
+                    </th>
+                    <th>
+                        @Html.DisplayNameFor(model => model.Unit)
+                    </th>
+                    <th>
+                        @Html.DisplayNameFor(model => model.Category)
+                    </th>
+
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td style="display:none">
+                            @Html.DisplayFor(modelItem => item.Id)
+                        </td>
+                        <td>
+                            <img src="@("~/imageSmall/" + item.ImagePath)" asp-append-version="true" width="50" height="50" loading="lazy" alt="smallImage" />
+                        </td>
+                        <td>
+                            @Html.DisplayFor(modelItem => item.Name)
+                        </td>
+                        <td>
+                            @Html.DisplayFor(modelItem => item.PCode)
+                        </td>
+                        <td>
+                            @Html.DisplayFor(modelItem => item.SellPrice)
+                        </td>
+                        <td>
+                            @Html.DisplayFor(modelItem => item.Unit.Label)
+                        </td>
+                        <td>
+                            @Html.DisplayFor(modelItem => item.Category.CatTitle)
+                        </td>
+
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <!--End of Div col8-->
+    <div class="col-sm-4 bg-light">
+        <h4>Bill</h4>
+        <div class="btn-group mb-1">
+            @Html.DropDownList("customerlist", list, new { @class = "form-control mr-2" })
+            @Html.DropDownList("storelist", list1, new { @class = "form-control mr-2" })
+        </div>
+
+        <br />
+        <table class="table" style="font-size:14px;">
+            <thead>
+                <tr>
+                    <td>Product</td>
+                    <td>Qty</td>
+                    <td>Price</td>
+                    <td></td>
+                    <td></td>
+                </tr>
+            </thead>
+            <tbody id="disp">
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td></td>
+                    <td>SubTotal</td>
+                    <td id="subtotal"></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+        <hr />
+        <div class="col-sm-4"><a id="paybill" class="btn btn-success text-white" data-toggle="modal" data-target="#centralModalSm">Pay</a></div>
+        <hr />
+    </div>
+
+</div>
+
+<!-- Central Modal Small -->
+<div class="modal fade" id="centralModalSm" tabindex="-1" role="dialog" aria-labelledby="myModalLabel"
+     aria-hidden="true">
+
+    <!-- Change class .modal-sm to change the size of the modal -->
+    <div class="modal-dialog modal-sm" role="document">
+
+
+        <div class="modal-content">
+            <div class="modal-header text-center">
+                <h4 class="modal-title w-100" id="myModalLabel">Init POS</h4>
+                <h6 class="modal-title w-25" id="myModalLabel">RefNo : <text id="refno"></text></h6>
+                <p id="date"></p>
+            </div>
+
+            <div class="modal-body">
+
+                <table class="table table-borderless" style="font-size:12px;">
+                    <thead>
+                        <tr>
+                            <td>Item</td>
+                            <td>Qty</td>
+                            <td>Price</td>
+                        </tr>
+                    </thead>
+                    <tbody id="mdisp">
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td></td>
+                            <td>Total</td>
+                            <td id="msubtotal"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+                <text class="text-center">Thanks for your trust!</text>
+            </div>
+            <div class="modal-footer d-print-none">
+                <button type="button" class="btn btn-secondary btn-sm" id="close" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="window.print()">Print</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Central Modal Small -->
+
+
+@section scripts{
+    <script type="text/javascript">
+        $(document).ready(function () {
+
+            $('#datatable').DataTable({
+
+                "lengthChange": false,
+
+            });
+
+            var total;
+
+            var table = $('#datatable').DataTable();
+            $('#datatable tbody').on('click', 'tr', function () {
+                var data = table.row(this).data();
+                $('#disp').append('<tr><td id="pid" style="Display:none">' + data[0] + '</td><td id="pname" >' + data[2] + '</td>' +
+                    '<td><input id="qty" maxlength="5" size="3" class="form-control" value="1"></input></td><td id="amt">' + data[4] + '</td><td id="amt2" style="display:none;"><input>' + data[4] +
+                    '</input></td><td><a id="rm" class="btn btn-danger">X</a></td></tr>');
+                //Calling Total
+                calc_total();
+            });
+            //Delete
+            $(document).on('click', '#rm', function () {
+                //click delete
+                $(this).closest('tr').remove();
+                //calling total
+                calc_total();
+            });
+
+            $('#disp').on('keyup change', function () {
+                //calling subtotal
+                calc();
+            });
+
+            function calc() {
+
+                $('#disp tr').each(function () {
+                    var html = $(this).html();
+                    if (html != "") {
+                        var qty = $(this).find('#qty').val();
+                        var price = parseFloat($(this).find('#amt2:hidden').text());
+                        //var gst_total = (qty * price * gst) / 100;
+                        $(this).find('#amt').html(qty * price);
+                        //calling total
+                        calc_total();
+                    }
+                });
+            }
+
+            function calc_total() {
+                total = 0;
+                $('#disp tr #amt').each(function () {
+                    total += parseFloat($(this).text());
+                });
+                $("#subtotal").html(total);
+
+            }
+
+            $("#paybill").on('click', function () {
+
+                var sale = new Array();
+                $('#disp tr').each(function (index) {
+                    var obj = {};
+                    obj.ProductId = $(this).find('#pid:hidden').text();
+                    obj.Quantity = $(this).find('#qty').val();
+                    obj.Total = $(this).find('#amt').text();
+                    if (obj.ProductId != null && obj.Quantity != null) {
+                        sale.push(obj);
+                    } else { alert("No item is selected!"); return false; }
+                });
+
+                var date = new Date();
+                var rdate = date.getFullYear() + '-' + (date.getMonth() + 1) + '-' + date.getDate() + ' ' + date.getHours() + ':' + date.getMinutes() + ':' + date.getSeconds() + '.' + date.getMilliseconds();
+                    $('#date').html(rdate);
+
+                    var customerid = $("#customerlist").find(":selected").val();
+                    var storeid = $("#storelist").find(":selected").val();
+
+                var userid = '@HttpContextAccessor.HttpContext.Session.GetString("SessionUserId")';
+              
+                var receipt = {
+
+                        CustomerId: customerid,
+                        StoreId: storeid,
+                        ReceiptDate: rdate,
+                        UserId: userid
+                };
+             
+                console.log(receipt);
+
+                if (sale === undefined || sale.length > 0) {
+
+                    $.ajax({
+
+                        url: '@Url.Action("BillPay", "POS")',
+                        type: 'post',
+                        dataType: 'json',
+                        contentType: 'application/json',
+                        data: JSON.stringify({ sale: sale, receipt: receipt }),
+
+                        success: function (data, status) {
+                            // console.log('the request(Success) is ' + status + ' the data is ' + data);
+                            //Printing
+                            $('#refno').html(data);
+
+                            var salePrint = new Array();
+                            salePrint = [];
+                            $('#disp tr').each(function (index) {
+                                var obj = {};
+                                obj.ProductName = $(this).find('#pname').text();
+                                obj.Quantity = $(this).find('#qty').val();
+                                obj.Total = $(this).find('#amt').text();
+                                if (obj.ProductName != null && obj.Quantity != null) {
+                                    salePrint.push(obj);
+                                }
+                            });
+
+                            salePrint.forEach(function (item) { $("#mdisp").append('<tr><td>' + item.ProductName + '</td><td>' + item.Quantity + '</td><td>' + item.Total + '</td></tr>'); });
+
+                            //SubTotal
+                            $('#msubtotal').html($('#subtotal').text());
+                            //remove Item
+
+                            $('#close').on('click', function () {
+                                $('#disp tr').remove();
+                                $('#subtotal').remove();
+                                $('#mdisp tr').remove();
+                                $('#msubtotal').remove();
+                            });
+
+                        },
+                        error: function (error) {
+                            console.log('the request(Error) is ' + error);
+                            alert(error);
+                        }
+                    });
+
+                } else {
+
+                    alert("No item is selected!");
+                    return false;
+                }
+
+                });
+
+        });
+    </script>
+}
